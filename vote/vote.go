@@ -1,7 +1,4 @@
-/**
-Tools package. It's contain some useful tools, just like vote and so on.
-This file is created by magic at 2018-9-3
-**/
+// Package vote /**
 package vote
 
 import (

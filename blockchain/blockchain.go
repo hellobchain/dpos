@@ -1,7 +1,3 @@
-// implement a simple p2p blockchain which use dpos algorithm.
-// this file just for a simple block generate and validate.
-// This file is created by magic at 2018-9-2
-
 package blockchain
 
 import (

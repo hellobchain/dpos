@@ -1,6 +1,3 @@
-// This is the p2p network, handler the conn and communicate with nodes each other.
-// this file is created by magic at 2018-9-2
-
 package p2p
 
 import (

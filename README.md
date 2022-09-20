@@ -1,4 +1,4 @@
-# Implement blockchain use dpos consensus
+# Implement blockchain use DPoS consensus
 
 ## Build
 go build -o build/dpos  cmd/main.go
