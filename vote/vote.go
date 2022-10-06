@@ -3,6 +3,7 @@ package vote
 
 import (
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/wsw365904/dpos/storage"
 	"github.com/wsw365904/wswlog/wlogging"
@@ -46,10 +47,12 @@ func Vote(context *cli.Context) error {
 
 	if name == "" {
 		logger.Errorf("节点名称不能为空")
+		return errors.Errorf("节点名称不能为空")
 	}
 
 	if vote < 1 {
 		logger.Errorf("最小投票数目为1")
+		return errors.Errorf("最小投票数目为1")
 	}
 
 	f, err := ioutil.ReadFile(storage.FileName)
