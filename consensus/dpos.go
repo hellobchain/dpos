@@ -17,14 +17,11 @@ const BPCount = 5
 // PickWinner 根据投票数量选择生成区块的节点
 func PickWinner() (bp string) {
 	// 选择BlockProducer
-
 	f, err := ioutil.ReadFile(storage.FileName)
 	if err != nil {
 		logger.Fatal(err)
 	}
-
 	res := strings.Split(string(f), "\n")
-
 	voteList := make([]int, len(res))
 	voteMap := make(map[string]int)
 	for _, node := range res {

@@ -1,12 +1,15 @@
 # Implement blockchain use DPoS consensus
 
 ## Build
-go build -o build/dpos  cmd/main.go
+### 二进制
+sh compile/compile.sh bin
+### 镜像
+sh compile/compile.sh docker
 ## RUN 
 ```
 git clone https://github.com/wsw365904/dpos.git
 cd dpos
-go build cmd/main.go
+go run cmd/main.go
 ```
 
 connect multi peer 

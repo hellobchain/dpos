@@ -6,8 +6,8 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/wsw365904/dpos/blockchain"
-	"github.com/wsw365904/dpos/dpos"
+	"github.com/wsw365904/dpos/consensus"
+	"github.com/wsw365904/dpos/message"
 	"github.com/wsw365904/dpos/storage"
 	"github.com/wsw365904/wswlog/wlogging"
 	"io"
@@ -36,60 +36,71 @@ const (
 
 var logger = wlogging.MustGetLoggerWithoutName()
 
-type p2p struct {
-	blockChain []blockchain.Block
+type P2p struct {
 	mutex      sync.Mutex
+	blockChain []*message.Block
+	buffer     *message.Buffer
 }
 
-//Validator 定义节点信息
-type Validator struct {
-	name string
-	vote int
+func NewP2p() *P2p {
+	return &P2p{
+		buffer:     message.NewBuffer(),
+		blockChain: make([]*message.Block, 0),
+	}
 }
 
-var globalP2p p2p
+const (
+	newCmd           = "new"
+	portFlagForNew   = "port"
+	targetFlagForNew = "target"
+	secioFlagForNew  = "secio"
+	seedFlagForNew   = "seed"
+)
 
-// NewNode 创建新的节点加入到P2P网络
-var NewNode = cli.Command{
-	Name:  "new",
-	Usage: "add a new node to p2p network",
-	Flags: []cli.Flag{
-		cli.IntFlag{
-			Name:  "port",
-			Value: 3000,
-			Usage: "新创建的节点端口号",
+func CreateNewNodeCmd(p *P2p) cli.Command {
+	// NewNode 创建新的节点加入到P2P网络
+	nodeCMd := cli.Command{
+		Name:  newCmd,
+		Usage: "add a new node to p2p network",
+		Flags: []cli.Flag{
+			cli.IntFlag{
+				Name:  portFlagForNew,
+				Value: 3000,
+				Usage: "port of new node",
+			},
+			cli.StringFlag{
+				Name:  targetFlagForNew,
+				Value: "",
+				Usage: "target node",
+			},
+			cli.BoolFlag{
+				Name:  secioFlagForNew,
+				Usage: "enable secio",
+			},
+			cli.Int64Flag{
+				Name:  seedFlagForNew,
+				Value: 0,
+				Usage: "generate random",
+			},
 		},
-		cli.StringFlag{
-			Name:  "target",
-			Value: "",
-			Usage: "目标节点",
+		Action: func(context *cli.Context) error {
+			if err := p.Run(context); err != nil {
+				return err
+			}
+			return nil
 		},
-		cli.BoolFlag{
-			Name:  "secio",
-			Usage: "是否打开secio",
-		},
-		cli.Int64Flag{
-			Name:  "seed",
-			Value: 0,
-			Usage: "生产随机数",
-		},
-	},
-	Action: func(context *cli.Context) error {
-		if err := globalP2p.Run(context); err != nil {
-			return err
-		}
-		return nil
-	},
+	}
+	return nodeCMd
 }
 
 // MakeBasicHost 构建P2P网络
-func MakeBasicHost(listenPort int, secio bool, randseed int64) (host.Host, error) {
+func MakeBasicHost(listenPort int, secio bool, randSeed int64) (host.Host, error) {
 	var r io.Reader
 
-	if randseed == 0 {
+	if randSeed == 0 {
 		r = rand.Reader
 	} else {
-		r = mrand.New(mrand.NewSource(randseed))
+		r = mrand.New(mrand.NewSource(randSeed))
 	}
 
 	// 生产一对公私钥
@@ -111,7 +122,7 @@ func MakeBasicHost(listenPort int, secio bool, randseed int64) (host.Host, error
 		return nil, err
 	}
 
-	// Build host multiaddress
+	// Build host multi address
 	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", basicHost.ID().Pretty()))
 
 	// Now we can build a full multiAddress to reach this host
@@ -131,8 +142,8 @@ func MakeBasicHost(listenPort int, secio bool, randseed int64) (host.Host, error
 }
 
 // HandleStream  handler stream info
-func (p *p2p) HandleStream(s network.Stream) {
-	logger.Infof("得到一个新的连接: %s", s.Conn().RemotePeer().Pretty())
+func (p *P2p) HandleStream(s network.Stream) {
+	logger.Infof("receive new connect: %s", s.Conn().RemotePeer().Pretty())
 	// 将连接加入到
 	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 	go p.readData(rw)
@@ -140,7 +151,7 @@ func (p *p2p) HandleStream(s network.Stream) {
 }
 
 // readData 读取数据输出到客户端
-func (p *p2p) readData(rw *bufio.ReadWriter) {
+func (p *P2p) readData(rw *bufio.ReadWriter) {
 	for {
 		str, err := rw.ReadString('\n')
 		if err != nil {
@@ -151,12 +162,10 @@ func (p *p2p) readData(rw *bufio.ReadWriter) {
 			return
 		}
 		if str != "\n" {
-			chain := make([]blockchain.Block, 0)
-
+			chain := make([]*message.Block, 0)
 			if err := json.Unmarshal([]byte(str), &chain); err != nil {
 				logger.Errorf(err.Error())
 			}
-
 			p.mutex.Lock()
 			if len(chain) > len(p.blockChain) {
 				p.blockChain = chain
@@ -173,28 +182,32 @@ func (p *p2p) readData(rw *bufio.ReadWriter) {
 }
 
 // writeData 将客户端数据处理写入BlockChain
-func (p *p2p) writeData(rw *bufio.ReadWriter) {
+func (p *P2p) writeData(rw *bufio.ReadWriter) {
 	// 启动一个协程处理终端同步
 	go func() {
+		timer := time.NewTimer(2 * time.Second)
+		defer timer.Stop()
 		for {
-			time.Sleep(2 * time.Second)
-			p.mutex.Lock()
-			bytes, err := json.Marshal(p.blockChain)
-			if err != nil {
-				logger.Errorf(err.Error())
+			select {
+			case <-timer.C:
+				p.mutex.Lock()
+				bytes, err := json.Marshal(p.blockChain)
+				if err != nil {
+					logger.Errorf(err.Error())
+				}
+				p.mutex.Unlock()
+				p.mutex.Lock()
+				_, err = rw.WriteString(fmt.Sprintf("%s\n", string(bytes)))
+				if err != nil {
+					logger.Errorf(err.Error())
+				}
+				err = rw.Flush()
+				if err != nil {
+					logger.Errorf(err.Error())
+				}
+				p.mutex.Unlock()
+				timer.Reset(2 * time.Second)
 			}
-			p.mutex.Unlock()
-
-			p.mutex.Lock()
-			_, err = rw.WriteString(fmt.Sprintf("%s\n", string(bytes)))
-			if err != nil {
-				return
-			}
-			err = rw.Flush()
-			if err != nil {
-				return
-			}
-			p.mutex.Unlock()
 		}
 	}()
 
@@ -216,12 +229,12 @@ func (p *p2p) writeData(rw *bufio.ReadWriter) {
 		address := dpos.PickWinner()
 		logger.Infof("******节点 %s 获得了记账权利******", address)
 		lastBlock := p.blockChain[len(p.blockChain)-1]
-		newBlock, err := blockchain.GenerateBlock(lastBlock, bpm, address)
+		newBlock, err := message.GenerateBlock(lastBlock, bpm, address)
 		if err != nil {
 			logger.Errorf(err.Error())
 		}
 
-		if blockchain.IsBlockValid(newBlock, lastBlock) {
+		if message.IsBlockValid(newBlock, lastBlock) {
 			p.mutex.Lock()
 			p.blockChain = append(p.blockChain, newBlock)
 			p.mutex.Unlock()
@@ -247,18 +260,17 @@ func (p *p2p) writeData(rw *bufio.ReadWriter) {
 }
 
 // Run 函数
-func (p *p2p) Run(ctx *cli.Context) error {
-
+func (p *P2p) Run(ctx *cli.Context) error {
 	t := time.Now()
-	genesisBlock := blockchain.Block{}
-	genesisBlock = blockchain.Block{Timestamp: t.String(), Hash: blockchain.CalculateBlockHash(genesisBlock)}
+	genesisBlock := &message.Block{}
+	genesisBlock = &message.Block{Timestamp: t.String(), Hash: message.CalculateBlockHash(genesisBlock)}
 	p.blockChain = append(p.blockChain, genesisBlock)
 
 	// 命令行传参
-	port := ctx.Int("port")
-	target := ctx.String("target")
-	secio := ctx.Bool("secio")
-	seed := ctx.Int64("seed")
+	port := ctx.Int(portFlagForNew)
+	target := ctx.String(targetFlagForNew)
+	secio := ctx.Bool(secioFlagForNew)
+	seed := ctx.Int64(seedFlagForNew)
 
 	if port == 0 {
 		logger.Fatal("请提供一个端口号")

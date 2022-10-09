@@ -11,28 +11,16 @@ import (
 var logger = wlogging.MustGetLoggerWithoutName()
 
 const (
-	// app Version 定义
 	appVersion = "v1.0"
 )
 const (
-	logLevel  = "log_level"
-	version   = "version"
-	appName   = "DPos"
-	appAuthor = "wsw"
+	logLevelFlag    = "log_level"
+	version         = "version"
+	appName         = "DPos"
+	appAuthor       = "wsw"
+	appUsage        = "DPoS consensus"
+	defaultLogLevel = "info"
 )
-
-var mainFlags = []cli.Flag{
-	cli.StringFlag{
-		Name:  logLevel,
-		Value: "info",
-		Usage: "set the log level to info",
-	},
-}
-
-var mainCommands = []cli.Command{
-	vote.NodeVote,
-	p2p.NewNode,
-}
 
 func main() {
 	err := newApp().Run(os.Args)
@@ -47,19 +35,29 @@ func beforeRun(context *cli.Context) error {
 		logger.Info(appVersion)
 		os.Exit(0)
 	}
-	wlogging.SetGlobalLogLevel(context.GlobalString(logLevel))
+	wlogging.SetGlobalLogLevel(context.GlobalString(logLevelFlag))
 	return nil
 }
 
 // new app
 func newApp() *cli.App {
+	var mainCmd []cli.Command
+	mainCmd = append(mainCmd, vote.CreateNodeVoteCmd())
+	mainCmd = append(mainCmd, p2p.CreateNewNodeCmd(p2p.NewP2p()))
+	mainFlags := []cli.Flag{
+		cli.StringFlag{
+			Name:  logLevelFlag,
+			Value: defaultLogLevel,
+			Usage: "set the log level to info",
+		},
+	}
 	app := cli.NewApp()
 	app.Name = appName
 	app.Version = appVersion
 	app.Author = appAuthor
 	app.Flags = mainFlags
-	app.Usage = "DPoS consensus"
-	app.Commands = mainCommands
+	app.Usage = appUsage
+	app.Commands = mainCmd
 	app.Before = beforeRun
 	return app
 }

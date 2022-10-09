@@ -15,28 +15,37 @@ import (
 
 var logger = wlogging.MustGetLoggerWithoutName()
 
-// NodeVote 节点投票命令
-var NodeVote = cli.Command{
-	Name:  "vote",
-	Usage: "vote for node",
-	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  "name",
-			Value: "",
-			Usage: "node name",
+const (
+	voteCmd           = "vote"
+	nameFlagForVote   = "name"
+	numberFlagForVote = "v"
+)
+
+func CreateNodeVoteCmd() cli.Command {
+	// NodeVote 节点投票命令
+	voteCmd := cli.Command{
+		Name:  voteCmd,
+		Usage: "vote for node",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  nameFlagForVote,
+				Value: "",
+				Usage: "node name",
+			},
+			cli.IntFlag{
+				Name:  numberFlagForVote,
+				Value: 0,
+				Usage: "vote number",
+			},
 		},
-		cli.IntFlag{
-			Name:  "v",
-			Value: 0,
-			Usage: "vote number",
+		Action: func(context *cli.Context) error {
+			if err := Vote(context); err != nil {
+				return err
+			}
+			return nil
 		},
-	},
-	Action: func(context *cli.Context) error {
-		if err := Vote(context); err != nil {
-			return err
-		}
-		return nil
-	},
+	}
+	return voteCmd
 }
 
 // Vote for node. The votes of node is origin vote plus new vote.
