@@ -7,7 +7,7 @@ sh compile/compile.sh bin
 sh compile/compile.sh docker
 ## RUN 
 ```
-git clone https://github.com/wsw365904/dpos.git
+git clone https://github.com/hellobchain/dpos.git
 cd dpos
 go run cmd/main.go
 ```

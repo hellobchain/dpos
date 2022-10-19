@@ -1,10 +1,10 @@
 package main
 
 import (
+	"github.com/hellobchain/dpos/p2p"
+	"github.com/hellobchain/dpos/vote"
+	"github.com/hellobchain/wswlog/wlogging"
 	"github.com/urfave/cli"
-	"github.com/wsw365904/dpos/p2p"
-	"github.com/wsw365904/dpos/vote"
-	"github.com/wsw365904/wswlog/wlogging"
 	"os"
 )
 

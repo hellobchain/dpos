@@ -1,4 +1,4 @@
-module github.com/wsw365904/dpos
+module github.com/hellobchain/dpos
 
 go 1.16
 
@@ -9,11 +9,11 @@ require (
 	github.com/multiformats/go-multiaddr v0.2.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli v1.22.2
-	github.com/wsw365904/wswlog v0.0.0-20220905080353-8ab223a9afdf
 )
 
 require (
 	github.com/FishGoddess/cachego v0.3.6
+	github.com/hellobchain/wswlog v0.0.0-20221019060629-971ee56a4abf
 	github.com/ipfs/go-log v1.0.0 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/libp2p/go-libp2p-circuit v0.1.4 // indirect

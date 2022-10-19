@@ -1,8 +1,8 @@
 package leveldb
 
 import (
-	"github.com/wsw365904/dpos/pkg/leveldb"
-	"github.com/wsw365904/dpos/storage"
+	"github.com/hellobchain/dpos/pkg/leveldb"
+	"github.com/hellobchain/dpos/storage"
 )
 
 var _ storage.Storage = (*leveldbImpl)(nil)

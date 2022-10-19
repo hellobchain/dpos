@@ -1,8 +1,8 @@
 package dpos
 
 import (
-	"github.com/wsw365904/dpos/storage"
-	"github.com/wsw365904/wswlog/wlogging"
+	"github.com/hellobchain/dpos/storage"
+	"github.com/hellobchain/wswlog/wlogging"
 	"io/ioutil"
 	"sort"
 	"strconv"
